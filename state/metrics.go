@@ -20,6 +20,9 @@ type Metrics struct {
 
 	// Time between BeginBlock and EndBlock, not as a histogram
 	BlockProcessingTimeSingle metrics.Gauge
+
+	// Time to validate block in ms
+	ValidationTime metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -44,6 +47,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "block_processing_time_single",
 			Help:      "Time to execute the current block in milliseconds",
 		}, labels).With(labelsAndValues...),
+		ValidationTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validation_time",
+			Help:      "Time to validate block in ms.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -52,5 +61,6 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		BlockProcessingTime:       discard.NewHistogram(),
 		BlockProcessingTimeSingle: discard.NewGauge(),
+		ValidationTime: 		   discard.NewGauge(),
 	}
 }

@@ -128,15 +128,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
+	startTime := time.Now().UnixNano()	
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
-
-	startTime := time.Now().UnixNano()
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
 	endTime := time.Now().UnixNano()
+	blockExec.metrics.ValidationTime.Set(float64(endTime-startTime) / 1000000)
+
+	startTime = time.Now().UnixNano()
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
+	endTime = time.Now().UnixNano()
 	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
-	blockExec.metrics.BlockProcessingTimeSingle.Set(float64(endTime-startTime) / 1000000)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
