@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	dbm "github.com/tendermint/tm-db"
 
@@ -14,7 +15,7 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block) error {
+func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block *types.Block, metrics *Metrics) error {
 	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
@@ -89,8 +90,11 @@ func validateBlock(evidencePool EvidencePool, stateDB dbm.DB, state State, block
 		if len(block.LastCommit.Signatures) != state.LastValidators.Size() {
 			return types.NewErrInvalidCommitSignatures(state.LastValidators.Size(), len(block.LastCommit.Signatures))
 		}
+		startTime := time.Now().UnixNano()
 		err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
+		endTime := time.Now().UnixNano()
+		metrics.VerifyCommitTime.Set(float64(endTime-startTime) / 1000000)
 		if err != nil {
 			return err
 		}

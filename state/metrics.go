@@ -23,6 +23,9 @@ type Metrics struct {
 
 	// Time to validate block in ms
 	ValidationTime metrics.Gauge
+
+	// Time to verify signatures in ms
+	VerifyCommitTime metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -53,6 +56,12 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Name:      "validation_time",
 			Help:      "Time to validate block in ms.",
 		}, labels).With(labelsAndValues...),
+		VerifyCommitTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validate_commit_time",
+			Help:      "Time to verify signatures in ms.",
+		}, labels).With(labelsAndValues...),
 	}
 }
 
@@ -62,5 +71,6 @@ func NopMetrics() *Metrics {
 		BlockProcessingTime:       discard.NewHistogram(),
 		BlockProcessingTimeSingle: discard.NewGauge(),
 		ValidationTime: 		   discard.NewGauge(),
+		VerifyCommitTime:		   discard.NewGauge(),	
 	}
 }
