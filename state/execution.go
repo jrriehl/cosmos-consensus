@@ -128,18 +128,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	state State, blockID types.BlockID, block *types.Block,
 ) (State, int64, error) {
 
-	startTime := time.Now().UnixNano()	
+	validateBlockStartTime := time.Now().UnixNano()
 	if err := blockExec.ValidateBlock(state, block); err != nil {
 		return state, 0, ErrInvalidBlock(err)
 	}
-	endTime := time.Now().UnixNano()
-	blockExec.metrics.ValidationTime.Set(float64(endTime-startTime) / 1000000)
+	validateBlockEndTime := time.Now().UnixNano()
+	blockExec.metrics.ValidationTime.Set(float64(validateBlockEndTime-validateBlockStartTime) / 1000000)
 
-	startTime = time.Now().UnixNano()
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, blockExec.db)
-	endTime = time.Now().UnixNano()
-	blockExec.metrics.BlockProcessingTime.Observe(float64(endTime-startTime) / 1000000)
-	blockExec.metrics.BlockProcessingTimeSingle.Set(float64(endTime-startTime) / 1000000)
+	execBlockEndTime := time.Now().UnixNano()
+	blockExec.metrics.BlockProcessingTime.Observe(float64(execBlockEndTime-validateBlockEndTime) / 1000000)
+	blockExec.metrics.BlockProcessingTimeSingle.Set(float64(execBlockEndTime-validateBlockEndTime) / 1000000)
 	if err != nil {
 		return state, 0, ErrProxyAppConn(err)
 	}
@@ -178,6 +177,8 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	if len(dkgValidatorUpdates) > 0 {
 		blockExec.logger.Info("Updates to dkg validators", "updates", types.ValidatorListString(dkgValidatorUpdates))
 	}
+	validateUpdateEndTime := time.Now().UnixNano()
+	blockExec.metrics.ValidateUpdateTime.Set(float64(validateUpdateEndTime-execBlockEndTime) / 1000000)
 
 	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, &block.Header, abciResponses, validatorUpdates, dkgValidatorUpdates)
@@ -199,12 +200,17 @@ func (blockExec *BlockExecutor) ApplyBlock(
 	// Update the app hash and save the state.
 	state.AppHash = appHash
 	SaveState(blockExec.db, state)
+	stateCommitMempoolEndTime := time.Now().UnixNano()
+	blockExec.metrics.StateCommitMempoolTime.Set(float64(stateCommitMempoolEndTime-validateUpdateEndTime) / 1000000)
 
 	fail.Fail() // XXX
 
 	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses, validatorUpdates)
+
+	applyBlockEndTime := time.Now().UnixNano()
+	blockExec.metrics.TotalBlockExecTime.Set(float64(applyBlockEndTime-validateBlockStartTime) / 1000000)
 
 	return state, retainHeight, nil
 }

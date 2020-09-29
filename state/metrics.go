@@ -26,6 +26,15 @@ type Metrics struct {
 
 	// Time to verify signatures in ms
 	VerifyCommitTime metrics.Gauge
+
+	// Time to validate validator updates
+	ValidateUpdateTime metrics.Gauge
+
+	// Time to commit state and update mempool
+	StateCommitMempoolTime metrics.Gauge
+
+	// Total time to execute block
+	TotalBlockExecTime metrics.Gauge
 }
 
 // PrometheusMetrics returns Metrics build using Prometheus client library.
@@ -59,8 +68,26 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		VerifyCommitTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Namespace: namespace,
 			Subsystem: MetricsSubsystem,
-			Name:      "validate_commit_time",
+			Name:      "verify_commit_time",
 			Help:      "Time to verify signatures in ms.",
+		}, labels).With(labelsAndValues...),
+		ValidateUpdateTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "validate_update_time",
+			Help:      "Time to validate validator updates in ms.",
+		}, labels).With(labelsAndValues...),
+		StateCommitMempoolTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "state_commit_mempool_update_time",
+			Help:      "Time to commit state and update mempool in ms.",
+		}, labels).With(labelsAndValues...),
+		TotalBlockExecTime: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "total_block_exec_time",
+			Help:      "Total time to execute block in ms.",
 		}, labels).With(labelsAndValues...),
 	}
 }
@@ -70,7 +97,10 @@ func NopMetrics() *Metrics {
 	return &Metrics{
 		BlockProcessingTime:       discard.NewHistogram(),
 		BlockProcessingTimeSingle: discard.NewGauge(),
-		ValidationTime: 		   discard.NewGauge(),
-		VerifyCommitTime:		   discard.NewGauge(),	
+		ValidationTime:            discard.NewGauge(),
+		VerifyCommitTime:          discard.NewGauge(),
+		ValidateUpdateTime:        discard.NewGauge(),
+		StateCommitMempoolTime:    discard.NewGauge(),
+		TotalBlockExecTime:        discard.NewGauge(),
 	}
 }
